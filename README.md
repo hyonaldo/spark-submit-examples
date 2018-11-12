@@ -1,5 +1,5 @@
 # spark maven example
-scala code를 maven으로 build하여 c3에 submit하는 template
+scala code를 maven으로 build하여 submit하는 template
 
 ## requirements
 * maven 3 이상
@@ -25,7 +25,7 @@ e.g. ./run.sh com.classting.SimpleApp 20161125 gyrbsdl18@naver.com
 
 ## run script includees...
 ```
-$ ./c3-spark.sh target/com.classting.SimpleApp-0.1-jar-with-dependencies.jar com.classting.SimpleApp '20161125 gyrbsdl18@naver.com'
+$ ./submit.sh target/com.classting.SimpleApp-0.1-jar-with-dependencies.jar com.classting.SimpleApp '20161125 gyrbsdl18@naver.com'
 ```
 
 ## ./submit.sh includes ... 
