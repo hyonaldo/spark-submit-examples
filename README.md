@@ -5,9 +5,9 @@ scala code를 maven으로 build하여 submit하는 template
 * maven 3 이상
 * java 1.7 이상
 * sendmail 설정
- * http://blog.naver.com/gyrbsdl18/220868516474
- * example이 spark conf 를 메일을 보내주는 내용이라서 필요
- * 메일 보내는 부분을 실행하기 싫다면 코드를 수정하면 됨  
+  * http://blog.naver.com/gyrbsdl18/220868516474
+  * example이 spark conf 를 메일을 보내주는 내용이라서 필요
+  * 메일 보내는 부분을 실행하기 싫다면 코드를 수정하면 됨  
 
 ## build
 ```
