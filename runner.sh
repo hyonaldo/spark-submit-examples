@@ -1,20 +1,20 @@
 #!/bin/bash
 
-JAR=$1
-CLASS=$2
-CLASS_ARGS=$3
+JAR="target/com.classting.jobs-0.1-jar-with-dependencies.jar"
+CLASS=$1
+CLASS_ARGS=$2
 
-if [[ $# != 3 ]]
+if [[ $# != 2 ]]
 then
-	echo "Usage: $0 [JAR] [CLASS] [CLASS_ARGS]"
-	echo "e.g. $0 target/com.classting.SimpleApp-0.1-jar-with-dependencies.jar com.classting.SimpleApp '20161125 gyrbsdl18@naver.com'"
+	echo "Usage: $0 [CLASS] [CLASS_ARGS]"
+	echo "e.g. $0 com.classting.SimpleApp '20180901 20180930'"
 	exit 1
 fi
 
 
 MASTER=yarn
 ARGS=" \
-	--queue dev --name hkpark/$(basename $CLASS) \
+	--name ${whoami}/$(basename $CLASS) \
 	--num-executors 4 \
 	--executor-cores 5 \
 	--executor-memory 3G \
@@ -23,11 +23,11 @@ ARGS=" \
 "
 
 echo "========================================"
-echo "$SPARK_HOME/bin/spark-submit --master $MASTER  --class $CLASS $ARGS $JAR $CLASS_ARGS"
+echo "/usr/bin/spark-submit --master $MASTER  --class $CLASS $ARGS $JAR $CLASS_ARGS"
 echo "========================================"
 
-$SPARK_HOME/bin/spark-submit --master $MASTER  --class $CLASS \
-	--queue dev --name hkpark/$(basename $CLASS) \
+/usr/bin/spark-submit --master $MASTER  --class $CLASS \
+	--name hkpark/$(basename $CLASS) \
 	--num-executors 4 \
 	--executor-cores 5 \
 	--executor-memory 5G \

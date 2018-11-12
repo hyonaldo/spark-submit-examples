@@ -1,11 +1,11 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
   <modelVersion>4.0.0</modelVersion>
   <groupId>com.classting</groupId>
-  <artifactId>com.classting.SimpleApp</artifactId>
+  <artifactId>com.classting.jobs</artifactId>
   <version>0.1</version>
   <name>${project.artifactId}</name>
-  <description>com.classting.SimpleApp</description>
-  <inceptionYear>2015</inceptionYear>
+  <description>com.classting.jobs</description>
+  <inceptionYear>2018</inceptionYear>
   <licenses>
     <license>
       <name>My License</name>
@@ -45,37 +45,7 @@
 	<dependency>
 	<groupId>org.apache.spark</groupId>
 	<artifactId>spark-sql_2.10</artifactId>
-	<version>2.0.1</version>
-	</dependency>
-	
-	<dependency>
-		<groupId>joda-time</groupId>
-		<artifactId>joda-time</artifactId>
-		<version>2.9.6</version>
-	</dependency>
-	
-	<dependency>
-		<groupId>org.joda</groupId>
-		<artifactId>joda-convert</artifactId>
-		<version>1.8.1</version>
-	</dependency>
-
-	<dependency>
-		<groupId>org.apache.commons</groupId>
-		<artifactId>commons-email</artifactId>
-		<version>1.4</version>
-      <exclusions>
-        <exclusion>
-          <groupId>com.sun.mail</groupId>
-          <artifactId>javax.mail</artifactId>
-        </exclusion>
-      </exclusions>
-	</dependency>
-
-	<dependency>
-		<groupId>javax.mail</groupId>
-		<artifactId>mail</artifactId>
-		<version>1.4</version>
+	<version>2.2.1</version>
 	</dependency>
 
   </dependencies>
@@ -113,9 +83,7 @@
             <descriptorRef>jar-with-dependencies</descriptorRef>
           </descriptorRefs>
           <archive>
-            <manifest>
-              <mainClass>com.classting.SimpleApp</mainClass>
-            </manifest>
+
           </archive>
         </configuration>
         
