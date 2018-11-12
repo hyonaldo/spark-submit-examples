@@ -4,8 +4,6 @@ scala code를 maven으로 build하여 c3에 submit하는 template
 ## requirements
 * maven 3 이상
 * java 1.7 이상
-* c3 개발 환경 구성
- * http://c3.doc.nhnsystem.com/docs/c3-user/en/latest/dev_env.html
 * sendmail 설정
  * http://blog.naver.com/gyrbsdl18/220868516474
  * example이 spark conf 를 메일을 보내주는 내용이라서 필요
@@ -20,17 +18,17 @@ mvn clean package
 ```
 $ ./run.sh
 Usage: ./run.sh [MainClass] [DATE] [EMAIL]
-e.g. ./run.sh com.navercorp.SimpleApp
-e.g. ./run.sh com.navercorp.SimpleApp 20161125
-e.g. ./run.sh com.navercorp.SimpleApp 20161125 hyokyun.park@navercorp.com
+e.g. ./run.sh com.classting.SimpleApp
+e.g. ./run.sh com.classting.SimpleApp 20161125
+e.g. ./run.sh com.classting.SimpleApp 20161125 gyrbsdl18@naver.com
 ```
 
 ## run script includees...
 ```
-$ ./c3-spark.sh target/com.navercorp.SimpleApp-0.1-jar-with-dependencies.jar com.navercorp.SimpleApp '20161125 hyokyun.park@navercorp.com'
+$ ./c3-spark.sh target/com.classting.SimpleApp-0.1-jar-with-dependencies.jar com.classting.SimpleApp '20161125 gyrbsdl18@naver.com'
 ```
 
-## ./c3-spark.sh includes ... 
+## ./submit.sh includes ... 
 ```
 
 $SPARK_HOME/bin/spark-submit --master $MASTER  --class $CLASS \
