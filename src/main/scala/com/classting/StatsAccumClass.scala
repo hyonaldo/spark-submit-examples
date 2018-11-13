@@ -48,10 +48,9 @@ object StatsAccumClass {
         if (isPrd > 0) {
             s3Url = s"$GS_INPUT_BUCKET/logs_" + todayDir + "/*"
         }
-        
-        val tmpDF = sqlContext.read.json(s"$GS_INPUT_BUCKET/logs_" + todayDir + "/" + todayDir + "-00_0_api_a.gz")
 
-        val rowlogsRDD = sqlContext.read.schema(tmpDF.schema).json(sc.textFile(s3Url))
+        val rowlogsRDD = spark.read.json(s3Url)
+
         var apiIdx = -1
         var methodIdx = -1
         var langIdx = -1
@@ -123,7 +122,7 @@ object StatsAccumClass {
             }
         }
 
-        val dellogsRDD = sqlContext.read.schema(tmpDF.schema).json(sc.textFile(s3Url)).rdd.filter    { x =>
+        val dellogsRDD = rowlogsRDD.rdd.filter    { x =>
                 !x.isNullAt(apiIdx) &&
                 x.getAs[String](apiIdx).contains("https://www.classting.com/api/classes") &&
                 x.getAs[String](methodIdx) == "DELETE" &&
@@ -236,8 +235,8 @@ object StatsAccumClass {
 
         val spark = SparkSession.builder().getOrCreate()
         val sc = spark.sparkContext
+	sc.setLogLevel("ERROR")
         val sqlContext = new org.apache.spark.sql.SQLContext(sc)
-        import spark.implicits._
 
         val fs = FileSystem.get(new URI("gs://classting-archive"), sc.hadoopConfiguration)
         date_list.foreach{
