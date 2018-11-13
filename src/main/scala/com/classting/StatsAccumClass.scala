@@ -33,8 +33,6 @@ object StatsAccumClass {
     }
     val cal = Calendar.getInstance
     val dateFormat = new java.text.SimpleDateFormat("yyyyMMdd")
-    var lastDays_list = Array(1,7,30)
-
 
     /*** MODIFIED ***/
     def analysisLog(output_path: String, indexName:String, typeName:String, todayDir:String, _isPrd:Int, timeStamp: String,
@@ -235,7 +233,7 @@ object StatsAccumClass {
 
         val spark = SparkSession.builder().getOrCreate()
         val sc = spark.sparkContext
-	sc.setLogLevel("ERROR")
+	//sc.setLogLevel("ERROR")
         val sqlContext = new org.apache.spark.sql.SQLContext(sc)
 
         val fs = FileSystem.get(new URI("gs://classting-archive"), sc.hadoopConfiguration)
