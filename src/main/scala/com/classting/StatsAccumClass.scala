@@ -228,12 +228,16 @@ object StatsAccumClass {
         val date_list = (0 to n-1).map{
             i =>
             DATE = start.minusDays( i ).format(tmp_dateFormat)
+            // guess as a kind of java bug 
+            if(DATE.endsWith("1231")){
+                val year = DATE.substring(0,4).toInt
+                DATE = DATE.replaceAll(year.toString, (year - 1).toString)
+            }
             DATE
         }
 
         val spark = SparkSession.builder().getOrCreate()
         val sc = spark.sparkContext
-	//sc.setLogLevel("ERROR")
         val sqlContext = new org.apache.spark.sql.SQLContext(sc)
 
         val fs = FileSystem.get(new URI("gs://classting-archive"), sc.hadoopConfiguration)

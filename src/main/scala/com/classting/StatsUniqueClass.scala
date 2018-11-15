@@ -204,6 +204,11 @@ object StatsUniqueClass {
         val date_list = (0 to n-1).map{
             i =>
             DATE = start.minusDays( i ).format(tmp_dateFormat)
+            // guess as a kind of java bug
+            if(DATE.endsWith("1231")){
+                val year = DATE.substring(0,4).toInt
+                DATE = DATE.replaceAll(year.toString, (year - 1).toString)
+            }
             DATE
         }
 
@@ -222,10 +227,10 @@ object StatsUniqueClass {
                 lastDays =>
                 var output_path = s"gs://classting-archive/unique-stats-${year}/class${lastDays}d-nodev/${year}${month}${day}"
                 fs.delete(new Path(output_path), true) // isRecusrive= true
-                println(s"delete... $output_path")
+                //println(s"delete... $output_path")
                 output_path = s"gs://classting-archive/unique-stats-${year}/class${lastDays}d/${year}${month}${day}"
                 fs.delete(new Path(output_path), true) // isRecusrive= true
-                println(s"delete... $output_path")
+                //println(s"delete... $output_path")
                 
                 println(s"analysisLog( $lastDays, $year, $month, $day, $sc, $spark )" )
                 analysisLog( lastDays, year, month, day, sc, spark )
