@@ -238,6 +238,7 @@ object StatsAccumClass {
 
         val spark = SparkSession.builder().getOrCreate()
         val sc = spark.sparkContext
+        sc.setLogLevel("ERROR")
         val sqlContext = new org.apache.spark.sql.SQLContext(sc)
 
         val fs = FileSystem.get(new URI("gs://classting-archive"), sc.hadoopConfiguration)
