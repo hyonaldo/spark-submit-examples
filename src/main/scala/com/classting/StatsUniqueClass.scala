@@ -161,7 +161,9 @@ object StatsUniqueClass {
             DATE
         }
 
-        val spark = SparkSession.builder().getOrCreate()
+        val spark = SparkSession.builder()
+        .config("spark.ui.showConsoleProgress", false)
+        .getOrCreate()
         val sc = spark.sparkContext
         sc.setLogLevel("ERROR")
         val sqlContext = new org.apache.spark.sql.SQLContext(sc)

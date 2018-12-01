@@ -16,6 +16,7 @@ import org.apache.hadoop.fs.Path
 object StatsUniqueUser {
     case class UniqueStats(id: String, role: String, device: String, country: String, unique_cnt: Int, date: String, lang: String, grade: Int, timeStamp:String, _index:String, _type:String)
 
+    val parallelism = 8
     val GS_INPUT_BUCKET = "gs://classting-client-log"
     val GS_OUTPUT_BUCKET = "gs://classting-archive"
     var DATE = "" // very!! very!! very!! important!!
@@ -91,7 +92,7 @@ object StatsUniqueUser {
                 !x.isNullAt(idIdx) &&
                 !x.getAs[String](idIdx).isEmpty() &&
                 x.getAs[Any](codeIdx) + "" != "400"
-        }
+        }.coalesce(parallelism, false)
         
         //    for w/o device
         val compactLogsRDD2 = activitylogsRDD.map { x =>
@@ -151,7 +152,9 @@ object StatsUniqueUser {
             DATE
         }
 
-        val spark = SparkSession.builder().getOrCreate()
+        val spark = SparkSession.builder()
+        .config("spark.ui.showConsoleProgress", false)
+        .getOrCreate()
         val sc = spark.sparkContext
         sc.setLogLevel("ERROR")
 

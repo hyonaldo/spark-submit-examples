@@ -1,6 +1,6 @@
 package com.classting
 
-/* StatsAccumClass.scala */
+/* StatsAccumUser.scala */
 import org.apache.spark.sql.SparkSession // we're going to use spark2.0
 import org.apache.spark.sql.SQLContext
 
@@ -13,41 +13,45 @@ import java.net.URI
 import org.apache.hadoop.fs.FileSystem
 import org.apache.hadoop.fs.Path
 
-object StatsAccumClass {
+object StatsAccumUser {
     case class StatsAccum(role: String, device: String, country: String, date: String, lang: String, grade: Int, timeStamp:String, _index:String, _type:String)
-
 
     val GS_INPUT_BUCKET = "gs://classting-client-log"
     val GS_OUTPUT_BUCKET = "gs://classting-archive"
+
     var DATE = "" // very!! very!! very!! important!!
     def get_names(date_str: String) = {
         val year = date_str.substring(0,4)
         val month = date_str.substring(4,6)
         val day = date_str.substring(6,8)
-
+        
         val indexName = "accum-stats-" + year
-        val typeName = "class"
+        // val typeName = "accumulate"
+        val typeName = "user"
         val output_path = s"$GS_OUTPUT_BUCKET/$indexName/$typeName/$date_str"
-        (indexName, typeName, output_path)
+        val del_output_path = output_path.replaceAll(s"/$typeName/","/user-del/")
+        (indexName, typeName, output_path, del_output_path)
     }
-    val cal = Calendar.getInstance
-    val dateFormat = new java.text.SimpleDateFormat("yyyyMMdd")
 
+    
     /*** MODIFIED ***/
-    def analysisLog(output_path: String, indexName:String, typeName:String, todayDir:String, _isPrd:Int, timeStamp: String,
-        sc:org.apache.spark.SparkContext, sqlContext:org.apache.spark.sql.SQLContext, spark:org.apache.spark.sql.SparkSession ) {
+    def analysisLog(todayDir:String, sc:org.apache.spark.SparkContext, spark:org.apache.spark.sql.SparkSession) {
         import spark.implicits._
-
-        val isPrd = _isPrd
+        val cal = Calendar.getInstance
+        val dateFormat = new java.text.SimpleDateFormat("yyyyMMdd")
+    
+        cal.setTime(dateFormat.parse(todayDir))
+        val timeStamp = cal.getTime
+        
+        val (indexName, typeName, output_path, del_output_path) = get_names(todayDir)
         
         /*** MODIFIED ***/
-        var s3Url = s"$GS_INPUT_BUCKET/logs_" + todayDir + "/" + todayDir + "-10_*.gz"
-        if (isPrd > 0) {
-            s3Url = s"$GS_INPUT_BUCKET/logs_" + todayDir + "/*"
-        }
-
+        var s3Url = s"$GS_INPUT_BUCKET/logs_" + todayDir + "/*"
+        
+        // val tmpDF = sqlContext.read.json(s"$GS_INPUT_BUCKET/logs_" + todayDir + "/" + todayDir + "-00_0_api_a.gz")
+        // val rowlogsRDD = sqlContext.read.schema(tmpDF.schema).json(sc.textFile(s3Url))
         val rowlogsRDD = spark.read.json(s3Url)
-
+        
         var apiIdx = -1
         var methodIdx = -1
         var langIdx = -1
@@ -57,7 +61,7 @@ object StatsAccumClass {
         var countryIdx = -1
         var codeIdx = -1
         var curIdx = 0
-        rowlogsRDD.columns.map    { col =>
+        rowlogsRDD.columns.foreach { col =>
             col match    {
                 case "api" => apiIdx = curIdx
                 case "method" => methodIdx = curIdx
@@ -71,20 +75,22 @@ object StatsAccumClass {
             }
             curIdx += 1
         }
-
-        val makelogsRDD = rowlogsRDD.rdd.filter    { x =>
+    
+        val signuplogsRDD = rowlogsRDD.rdd.filter    { x =>
                 !x.isNullAt(apiIdx) &&
-                x.getAs[String](apiIdx) == "https://www.classting.com/api/classes" &&
+                ( x.getAs[String](apiIdx) == "https://www.classting.com/api/users" ||
+                        x.getAs[String](apiIdx) == "https://oauth.classting.com/v1/oauth2/sign_up" ||
+                        x.getAs[String](apiIdx) == "https://oauth.classting.com/api/users" )&&
                 x.getAs[String](methodIdx) == "POST" &&
                 x.getAs[Any](codeIdx) + "" == "200"
         }
-
+    
         var role = "Null"
-        val compactLogsRDD = makelogsRDD.map { x =>
+        val compactLogsRDD = signuplogsRDD.map { x =>
             if( x.getAs[String](roleIdx) != "" )    {
                 role = x.getAs[String](roleIdx)
             }
-
+    
             if( langIdx < 0 )    {
                 if( deviceIdx > 0 )    {
                     val device = x.getAs[String](deviceIdx) + ""
@@ -118,24 +124,24 @@ object StatsAccumClass {
                 }
             }
         }
-
-        val dellogsRDD = rowlogsRDD.rdd.filter    { x =>
+    
+        // val signoutlogsRDD = sqlContext.read.schema(tmpDF.schema).json(sc.textFile(s3Url)).rdd.filter    { x =>
+        val signoutlogsRDD = rowlogsRDD.rdd.filter    { x =>
                 !x.isNullAt(apiIdx) &&
-                x.getAs[String](apiIdx).contains("https://www.classting.com/api/classes") &&
+                x.getAs[String](apiIdx).contains("https://www.classting.com/api/users") &&
                 x.getAs[String](methodIdx) == "DELETE" &&
                 x.getAs[Any](codeIdx) + "" == "200" &&
                 x.getAs[String](apiIdx).split("/").length == 6
         }
-
         var role2 = "Null"
-        val compactLogsRDD2 = dellogsRDD.map { x =>
+        val compactLogsRDD2 = signoutlogsRDD.map { x =>
             if( x.getAs[String](roleIdx) != "" )    {
                 role2 = x.getAs[String](roleIdx)
             }
             else    {
                 role2 = "student"
             }
-
+    
             if( langIdx < 0 )    {
                 if( deviceIdx > 0 )    {
                     val device = x.getAs[String](deviceIdx) + ""
@@ -173,22 +179,14 @@ object StatsAccumClass {
         val ds1 = compactLogsRDD.toDS
         val ds2 = compactLogsRDD2.toDS
         
-        val del_output_path = output_path.replaceAll(s"/$typeName/","/class-del/")
-        
-        if( isPrd > 8 ) {
-            // compactLogsRDD.coalesce(partSize/5, false).saveToEs(indexName + "/" + typeName, Map("es.nodes" -> esNode))
-            ds1.coalesce(1).write.option("compression","none").parquet(output_path)
-            // compactLogsRDD2.coalesce(partSize/5, false).saveToEs(indexName + "/" + "class-del", Map("es.nodes" -> esNode))
-            ds2.coalesce(1).write.option("compression","none").parquet(del_output_path)
-        }
-        else if( isPrd == 5 )    {
-            // compactLogsRDD.coalesce(partSize/5, false).saveToEs(indexName + "/" + typeName, Map("es.nodes" -> esNode))
-            ds1.coalesce(1).write.option("compression","none").parquet(output_path)
-            // compactLogsRDD2.coalesce(partSize/5, false).saveToEs(indexName + "/" + "class-del", Map("es.nodes" -> esNode))
-            ds2.coalesce(1).write.option("compression","none").parquet(del_output_path)
-        }
-
+        // user
+        ds1.coalesce(1).write.option("compression","none").parquet(output_path)
+        // user-del
+        ds2.coalesce(1).write.option("compression","none").parquet(del_output_path)
+    
+    
     } // end def analysisLog()
+
 
     def main(args: Array[String]) {
         val usage = s"""
@@ -220,7 +218,6 @@ object StatsAccumClass {
         val _day = _date.substring(6,8).toInt
 
         var n = NUM_DAYS.toString.toDouble.toInt
-        val isPrd = 9
 
         val tmp_dateFormat = DateTimeFormatter.ofPattern("YYYYMMdd")
         val start = LocalDate.of(_year, _month, _day)
@@ -243,22 +240,19 @@ object StatsAccumClass {
         val sqlContext = new org.apache.spark.sql.SQLContext(sc)
 
         val fs = FileSystem.get(new URI("gs://classting-archive"), sc.hadoopConfiguration)
+
         date_list.foreach{
             todayDir =>
-            cal.setTime(dateFormat.parse(todayDir))
-            val timeStamp = cal.getTime.toString
-            val (indexName, typeName, output_path) = get_names(todayDir)
-            println(output_path)
+            //e.g. gs://classting-archive/accum-stats-2018/class/20181001
+            val (indexName, typeName, output_path, del_output_path) = get_names(todayDir)
+        
             fs.delete(new Path(output_path), true) // isRecusrive= true
             println(s"delete... $output_path")
-
-            val del = output_path.replaceAll(s"/$typeName/","/class-del/")
-
-            println(del)
-            fs.delete(new Path(del), true) // isRecusrive= true
-            println(s"delete... $del")
-
-            analysisLog(output_path, indexName, typeName, todayDir, isPrd, timeStamp, sc, sqlContext, spark)
+        
+            fs.delete(new Path(del_output_path), true) // isRecusrive= true
+            println(s"delete... $del_output_path")
+        
+            analysisLog(todayDir, sc, spark )
         }
     }
 
