@@ -34,6 +34,7 @@ object StatsAccumUser {
     }
 
     
+    
     /*** MODIFIED ***/
     def analysisLog(todayDir:String, sc:org.apache.spark.SparkContext, spark:org.apache.spark.sql.SparkSession) {
         import spark.implicits._
@@ -243,7 +244,7 @@ object StatsAccumUser {
 
         date_list.foreach{
             todayDir =>
-            //e.g. gs://classting-archive/accum-stats-2018/class/20181001
+            //e.g. gs://classting-archive/accum-stats-2018/user/20181001
             val (indexName, typeName, output_path, del_output_path) = get_names(todayDir)
         
             fs.delete(new Path(output_path), true) // isRecusrive= true
