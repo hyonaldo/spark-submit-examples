@@ -55,7 +55,7 @@ object Cohort {
         ///////////////////////////////////
         // for activity
         val tmpDate = dateFormat.format(cal.getTime)
-        val tmpDF = spark.sqlContext.read.json(s"$GS_INPUT_BUCKET/logs_" + tmpDate + "/" + tmpDate + "-0*_0_all_a.gz")//20181009-01_0_all_a.gz
+        val tmpDF = spark.sqlContext.read.json(s"$GS_INPUT_BUCKET/logs_" + tmpDate + "/" + tmpDate + "-0*_0_all_*.gz")//20181009-01_0_all_a.gz
         var activityRDDs = Map[Int, RDD[(String, Int)]]()
         val urls = List.tabulate(30) { x =>
                 cal.add(Calendar.DATE, -1)
@@ -181,11 +181,12 @@ object Cohort {
         val start = LocalDate.of(_year, _month, _day)
         val date_list = (0 to n-1).map{
             i =>
-            DATE = start.minusDays( i ).format(tmp_dateFormat)
-            // guess as a kind of java bug 
-            if(DATE.endsWith("1231")){
+            // bypass java bug
+            if( DATE.endsWith("0101") ){
                 val year = DATE.substring(0,4).toInt
-                DATE = DATE.replaceAll(year.toString, (year - 1).toString)
+                    DATE = (year - 1).toString + "1231"
+            }else{
+                DATE = start.minusDays( i ).format(tmp_dateFormat)
             }
             DATE
         }

@@ -143,11 +143,12 @@ object StatsUniqueUser {
         val start = LocalDate.of(_year, _month, _day)
         val date_list = (0 to n-1).map{
             i =>
-            DATE = start.minusDays( i ).format(tmp_dateFormat)
-            // guess as a kind of java bug
-            if(DATE.endsWith("1231")){
+            // bypass java bug
+            if( DATE.endsWith("0101") ){
                 val year = DATE.substring(0,4).toInt
-                DATE = DATE.replaceAll(year.toString, (year - 1).toString)
+                    DATE = (year - 1).toString + "1231"
+            }else{
+                DATE = start.minusDays( i ).format(tmp_dateFormat)
             }
             DATE
         }

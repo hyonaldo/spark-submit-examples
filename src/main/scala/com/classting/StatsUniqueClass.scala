@@ -152,11 +152,12 @@ object StatsUniqueClass {
         val start = LocalDate.of(_year, _month, _day)
         val date_list = (0 to n-1).map{
             i =>
-            DATE = start.minusDays( i ).format(tmp_dateFormat)
-            // guess as a kind of java bug
-            if(DATE.endsWith("1231")){
+            // bypass java bug
+            if( DATE.endsWith("0101") ){
                 val year = DATE.substring(0,4).toInt
-                DATE = DATE.replaceAll(year.toString, (year - 1).toString)
+                    DATE = (year - 1).toString + "1231"
+            }else{
+                DATE = start.minusDays( i ).format(tmp_dateFormat)
             }
             DATE
         }
@@ -180,12 +181,10 @@ object StatsUniqueClass {
                 var output_path = s"gs://classting-archive/unique-stats-${year}/class${lastDays}d-nodev/${year}${month}${day}"
                 fs.delete(new Path(output_path), true) // isRecusrive= true
                 //println(s"delete... $output_path")
-                output_path = s"gs://classting-archive/unique-stats-${year}/class${lastDays}d/${year}${month}${day}"
-                fs.delete(new Path(output_path), true) // isRecusrive= true
-                //println(s"delete... $output_path")
                 
                 println(s"analysisLog( $OBJ, $lastDays, $year, $month, $day, $sc, $spark )" )
                 analysisLog( OBJ, lastDays, year, month, day, sc, spark )
+                println(java.time.LocalDateTime.now( ZoneId.of( "Asia/Seoul" ) ))
             }
         }
     }

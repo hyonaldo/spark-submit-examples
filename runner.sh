@@ -14,7 +14,7 @@ fi
 
 MASTER=yarn
 ARGS=" \
-	--name ${whoami}/$(basename $CLASS) \
+	--name ${hostname}/$(basename $CLASS) \
 	--num-executors 4 \
 	--executor-cores 5 \
 	--executor-memory 3G \
@@ -27,12 +27,9 @@ echo "/usr/bin/spark-submit --master $MASTER  --class $CLASS $ARGS $JAR $CLASS_A
 echo "========================================"
 
 /usr/bin/spark-submit --master $MASTER  --class $CLASS \
-	--name hkpark/$(basename $CLASS) \
-	--num-executors 4 \
-	--executor-cores 5 \
+	--name ${hostname}/$(basename $CLASS) \
 	--executor-memory 5G \
-	--driver-cores 3 \
-	--driver-memory 4G \
+	--driver-memory 5G \
 $JAR $CLASS_ARGS  2>&1
 
 # See Also
