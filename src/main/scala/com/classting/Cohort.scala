@@ -55,7 +55,7 @@ object Cohort {
         ///////////////////////////////////
         // for activity
         val tmpDate = dateFormat.format(cal.getTime)
-        val tmpDF = spark.sqlContext.read.json(s"$GS_INPUT_BUCKET/logs_20181009/20181009-01_0_all_a.gz")
+        val tmpDF = spark.sqlContext.read.json(s"$GS_INPUT_BUCKET/logs_20181009/20181009-01_0_all_a.gz") // to speed up
         //val tmpDF = spark.sqlContext.read.json(s"$GS_INPUT_BUCKET/logs_" + tmpDate + "/" + tmpDate + "-0*_0_all_*.gz")//20181009-01_0_all_a.gz
         var activityRDDs = Map[Int, RDD[(String, Int)]]()
         val urls = List.tabulate(30) { x =>
