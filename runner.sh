@@ -15,11 +15,13 @@ fi
 MASTER=yarn
 ARGS=" \
 	--name ${hostname}/$(basename $CLASS) \
-	--num-executors 4 \
-	--executor-cores 5 \
+	--num-executors 8 \
+	--executor-cores 2 \
 	--executor-memory 3G \
-	--driver-cores 3 \
-	--driver-memory 4G \
+	--driver-cores 2 \
+	--driver-memory 3G \
+	--conf spark.dynamicAllocation.enabled=false \
+	--conf spark.eventLog.enabled=false \
 "
 
 echo "========================================"
@@ -28,8 +30,13 @@ echo "========================================"
 
 /usr/bin/spark-submit --master $MASTER  --class $CLASS \
 	--name ${hostname}/$(basename $CLASS) \
-	--executor-memory 5G \
-	--driver-memory 5G \
+	--num-executors 8 \
+	--executor-cores 2 \
+	--executor-memory 3G \
+	--driver-cores 2 \
+	--driver-memory 3G \
+	--conf spark.dynamicAllocation.enabled=false \
+	--conf spark.eventLog.enabled=false \
 $JAR $CLASS_ARGS  2>&1
 
 # See Also
