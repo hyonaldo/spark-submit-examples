@@ -18,7 +18,7 @@ ARGS=" \
 	--num-executors 8 \
 	--executor-cores 2 \
 	--executor-memory 3G \
-	--driver-cores 2 \
+	--driver-cores 1 \
 	--driver-memory 3G \
 	--conf spark.dynamicAllocation.enabled=false \
 	--conf spark.eventLog.enabled=false \
@@ -28,12 +28,12 @@ echo "========================================"
 echo "/usr/bin/spark-submit --master $MASTER  --class $CLASS $ARGS $JAR $CLASS_ARGS"
 echo "========================================"
 
-/usr/bin/spark-submit --master $MASTER  --class $CLASS \
+sudo /usr/bin/spark-submit --master $MASTER  --class $CLASS \
 	--name ${hostname}/$(basename $CLASS) \
 	--num-executors 8 \
 	--executor-cores 2 \
 	--executor-memory 3G \
-	--driver-cores 2 \
+	--driver-cores 1 \
 	--driver-memory 3G \
 	--conf spark.dynamicAllocation.enabled=false \
 	--conf spark.eventLog.enabled=false \

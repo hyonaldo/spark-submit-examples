@@ -13,12 +13,13 @@ import java.net.URI
 import org.apache.hadoop.fs.FileSystem
 import org.apache.hadoop.fs.Path
 
+import org.apache.spark.sql.functions._
 object StatsUniqueClass {
-    case class UniqueStats(id: String, role: String, device: String, country: String, unique_cnt: Int, date: String, lang: String, grade: Int, timeStamp:String, _index:String, _type:String)
+    case class UniqueStats(id: String, role: String, device: String, country: String, unique_cnt: Long, date: String, lang: String, grade: Long, timeStamp:String, _index:String, _type:String)
 
 
-    val GS_INPUT_BUCKET = "gs://classting-client-log"
-    val GS_OUTPUT_BUCKET = "gs://classting-archive"
+    val GS_INPUT_BUCKET = "s3://classting-client-log" //"gs://classting-client-log"
+    val GS_OUTPUT_BUCKET = "s3://classting-archive" //"gs://classting-archive"
     val OBJ = "class"
     var DATE = "" // very!! very!! very!! important!!
     var lastDays_list = Array(1,7,30)
@@ -82,7 +83,7 @@ object StatsUniqueClass {
         }
         //      println( PREFIX + "targetTypeIdx: " + targetTypeIdx )
         
-        val activitylogsRDD = rowlogsRDD.rdd.filter { x =>
+        val activitylogsRDD = rowlogsRDD.filter { x =>
             val targetType = ""+x.getAs[String](targetTypeIdx)
             val resType = ""+x.getAs[String](resourceTypeIdx)
             targetType.equals("class") &&
@@ -97,6 +98,7 @@ object StatsUniqueClass {
         }
 
         //  for w/o device
+        /*
         val compactLogsRDD2 = activitylogsRDD.map { x =>
             if( langIdx < 0 )   {
                 ((x.getAs[String](targetIdIdx), x.getAs[String](roleIdx), x.getAs[String](countryIdx), "_null"), 1)
@@ -110,8 +112,15 @@ object StatsUniqueClass {
             UniqueStats(log._1._1,log._1._2, "_all", log._1._3, log._2, todayDir, log._1._4, 0, timeStamp.toString, indexName, typeNameND)
         }
         .toDS
-        
+        */
+        val compactLogsRDD2 = activitylogsRDD.groupBy("target_id", "role", "device", "country", "language", "grade").agg(count("*").alias("unique_cnt"))
 
+        val uniqueLogsDS2 =  compactLogsRDD2.map{
+            x =>
+            UniqueStats(x.getAs[String]("target_id"), x.getAs[String]("role"), x.getAs[String]("device"), x.getAs[String]("country"), x.getAs[Long]("unique_cnt"), todayDir,
+            x.getAs[String]("language"), x.getAs[Long]("grade"),timeStamp.toString, indexName, typeNameND)
+        }
+        
         uniqueLogsDS2.coalesce(1).write.option("compression","none").parquet(s"$GS_OUTPUT_BUCKET/$indexName/$typeNameND/$todayDir")
 
     } // end def analysisLog()
@@ -169,7 +178,7 @@ object StatsUniqueClass {
         sc.setLogLevel("ERROR")
         val sqlContext = new org.apache.spark.sql.SQLContext(sc)
 
-        val fs = FileSystem.get(new URI("gs://classting-archive"), sc.hadoopConfiguration)
+        val fs = FileSystem.get(new URI(GS_OUTPUT_BUCKET), sc.hadoopConfiguration)
         date_list.foreach{
             todayDir =>
             val year = todayDir.substring(0,4)
@@ -178,7 +187,7 @@ object StatsUniqueClass {
             
             lastDays_list.foreach{
                 lastDays =>
-                var output_path = s"gs://classting-archive/unique-stats-${year}/class${lastDays}d-nodev/${year}${month}${day}"
+                var output_path = s"${GS_OUTPUT_BUCKET}/unique-stats-${year}/class${lastDays}d-nodev/${year}${month}${day}"
                 fs.delete(new Path(output_path), true) // isRecusrive= true
                 //println(s"delete... $output_path")
                 

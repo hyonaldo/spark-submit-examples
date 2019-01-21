@@ -13,12 +13,15 @@ import java.net.URI
 import org.apache.hadoop.fs.FileSystem
 import org.apache.hadoop.fs.Path
 
+import org.apache.spark.sql.functions._
 object StatsUniqueUser {
-    case class UniqueStats(id: String, role: String, device: String, country: String, unique_cnt: Int, date: String, lang: String, grade: Int, timeStamp:String, _index:String, _type:String)
+    case class UniqueStats(id: String, role: String, device: String, country: String, unique_cnt: Long, date: String, lang: String, grade: Long, timeStamp:String, _index:String, _type:String)
 
     val parallelism = 8
-    val GS_INPUT_BUCKET = "gs://classting-client-log"
-    val GS_OUTPUT_BUCKET = "gs://classting-archive"
+    //val GS_INPUT_BUCKET = "gs://classting-client-log"
+    val GS_INPUT_BUCKET = "s3://classting-client-log"
+    //val GS_OUTPUT_BUCKET = "gs://classting-archive"
+    val GS_OUTPUT_BUCKET = "s3://classting-archive"
     var DATE = "" // very!! very!! very!! important!!
     var lastDays_list = Array(1,7,30)
 
@@ -85,25 +88,38 @@ object StatsUniqueUser {
         }
         
         //    api=page_move, code=400, id=""
-        val activitylogsRDD = rowlogsRDD.rdd.filter { x =>
+        val activitylogsRDD = rowlogsRDD.filter { x =>
                 !x.isNullAt(apiIdx) &&
                 !x.getAs[String](apiIdx).equals("page_move") &&
                 !x.getAs[String](apiIdx).equals("_null") &&
                 !x.isNullAt(idIdx) &&
                 !x.getAs[String](idIdx).isEmpty() &&
                 x.getAs[Any](codeIdx) + "" != "400"
-        }.coalesce(parallelism, false)
+        }.
+        withColumn("grade", when($"grade".isNull,lit(-999)).otherwise($"grade")).
+        withColumn("language", when($"language".isNull,lit("_null")).otherwise($"language")).
+        withColumn("tag", when($"tag".isNull,lit("_null")).otherwise($"tag".toString.replace(".event", ""))).
+        withColumn("device", when($"device".isNull, $"tag").otherwise($"device".toString.replace(".event", "")))
         
         //    for w/o device
+        /*
         val compactLogsRDD2 = activitylogsRDD.map { x =>
             ((x.getAs[String](idIdx), x.getAs[String](roleIdx), x.getAs[String](countryIdx), x.getAs[String](langIdx)), 1)
-        }
+        }*/
+        val compactLogsRDD2 = activitylogsRDD.groupBy("target_id", "role", "device", "country", "language", "grade").agg(count("*").alias("unique_cnt"))
         
         val (indexName, typeName, output_path) = get_names(lastDays, todayDir)
+        /*
         val uniqueLogsDS2 = compactLogsRDD2.reduceByKey(_ + _).map { log =>
             UniqueStats(log._1._1,log._1._2, "_all", log._1._3, log._2, todayDir, log._1._4, 0, timeStamp.toString, indexName, typeName)
         }
         .toDS
+        */
+        val uniqueLogsDS2 =  compactLogsRDD2.map{
+            x =>
+            UniqueStats(x.getAs[String]("target_id"), x.getAs[String]("role"), x.getAs[String]("device"), x.getAs[String]("country"), x.getAs[Long]("unique_cnt"), todayDir,
+            x.getAs[String]("language"), x.getAs[Long]("grade"),timeStamp.toString, indexName, typeName)
+        }
         uniqueLogsDS2.coalesce(1).write.option("compression","none").parquet(output_path)
     } // end def analysisLog()
 
@@ -159,7 +175,7 @@ object StatsUniqueUser {
         val sc = spark.sparkContext
         sc.setLogLevel("ERROR")
 
-        val fs = FileSystem.get(new URI("gs://classting-archive"), sc.hadoopConfiguration)
+        val fs = FileSystem.get(new URI(GS_OUTPUT_BUCKET), sc.hadoopConfiguration)
         date_list.foreach{
             todayDir =>
             lastDays_list.foreach{
