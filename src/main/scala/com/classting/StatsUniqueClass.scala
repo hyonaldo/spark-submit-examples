@@ -95,7 +95,11 @@ object StatsUniqueClass {
                 resType.equals("photos") ||
                 resType.equals("notice") ) &&
             x.getAs[Any]("code") + "" != "400"
-        }
+        }.
+        withColumn("grade", when($"grade".isNull,lit(-999L)).otherwise($"grade")).
+        withColumn("language", when($"language".isNull,lit("_null")).otherwise($"language")).
+        withColumn("tag", when($"tag".isNull,lit("_null")).otherwise( regexp_replace($"tag", ".event", "") )).
+        withColumn("device", when($"device".isNull, $"tag").otherwise( regexp_replace($"device", ".event", "") ))
 
         //  for w/o device
         /*
@@ -118,7 +122,7 @@ object StatsUniqueClass {
         val uniqueLogsDS2 =  compactLogsRDD2.map{
             x =>
             UniqueStats(x.getAs[String]("target_id"), x.getAs[String]("role"), x.getAs[String]("device"), x.getAs[String]("country"), x.getAs[Long]("unique_cnt"), todayDir,
-            x.getAs[String]("language"), x.getAs[Long]("grade"),timeStamp.toString, indexName, typeNameND)
+            x.getAs[String]("language"), x.getAs[Any]("grade").toString.toLong,timeStamp.toString, indexName, typeNameND)
         }
         
         uniqueLogsDS2.coalesce(1).write.option("compression","none").parquet(s"$GS_OUTPUT_BUCKET/$indexName/$typeNameND/$todayDir")
@@ -160,17 +164,9 @@ object StatsUniqueClass {
         val tmp_dateFormat = DateTimeFormatter.ofPattern("YYYYMMdd")
         val start = LocalDate.of(_year, _month, _day)
         val date_list = (0 to n-1).map{
-            i =>
-            // bypass java bug
-            if( DATE.endsWith("0101") ){
-                val year = DATE.substring(0,4).toInt
-                    DATE = (year - 1).toString + "1231"
-            }else{
-                DATE = start.minusDays( i ).format(tmp_dateFormat)
-            }
-            DATE
+          i =>
+            start.minusDays( i ).toString.replaceAll("-", "")
         }
-
         val spark = SparkSession.builder()
         .config("spark.ui.showConsoleProgress", false)
         .getOrCreate()

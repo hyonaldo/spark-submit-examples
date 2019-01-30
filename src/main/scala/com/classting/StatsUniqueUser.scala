@@ -96,17 +96,19 @@ object StatsUniqueUser {
                 !x.getAs[String](idIdx).isEmpty() &&
                 x.getAs[Any](codeIdx) + "" != "400"
         }.
-        withColumn("grade", when($"grade".isNull,lit(-999)).otherwise($"grade")).
+        withColumn("grade", when($"grade".isNull,lit(-999L)).otherwise($"grade")).
         withColumn("language", when($"language".isNull,lit("_null")).otherwise($"language")).
-        withColumn("tag", when($"tag".isNull,lit("_null")).otherwise($"tag".toString.replace(".event", ""))).
-        withColumn("device", when($"device".isNull, $"tag").otherwise($"device".toString.replace(".event", "")))
+        withColumn("tag", when($"tag".isNull,lit("_null")).otherwise( regexp_replace($"tag", ".event", "") )).
+        withColumn("device", when($"device".isNull, $"tag").otherwise( regexp_replace($"device", ".event", "") ))
+        //withColumn("tag", when($"tag".isNull,lit("_null")).otherwise($"tag".toString.replace(".event", ""))).
+        //withColumn("device", when($"device".isNull, $"tag").otherwise($"device".toString.replace(".event", "")))
         
         //    for w/o device
         /*
         val compactLogsRDD2 = activitylogsRDD.map { x =>
             ((x.getAs[String](idIdx), x.getAs[String](roleIdx), x.getAs[String](countryIdx), x.getAs[String](langIdx)), 1)
         }*/
-        val compactLogsRDD2 = activitylogsRDD.groupBy("target_id", "role", "device", "country", "language", "grade").agg(count("*").alias("unique_cnt"))
+        val compactLogsRDD2 = activitylogsRDD.groupBy("id", "role", "device", "country", "language", "grade").agg(count("*").alias("unique_cnt"))
         
         val (indexName, typeName, output_path) = get_names(lastDays, todayDir)
         /*
@@ -117,8 +119,8 @@ object StatsUniqueUser {
         */
         val uniqueLogsDS2 =  compactLogsRDD2.map{
             x =>
-            UniqueStats(x.getAs[String]("target_id"), x.getAs[String]("role"), x.getAs[String]("device"), x.getAs[String]("country"), x.getAs[Long]("unique_cnt"), todayDir,
-            x.getAs[String]("language"), x.getAs[Long]("grade"),timeStamp.toString, indexName, typeName)
+            UniqueStats(x.getAs[String]("id"), x.getAs[String]("role"), x.getAs[String]("device"), x.getAs[String]("country"), x.getAs[Long]("unique_cnt"), todayDir,
+            x.getAs[String]("language"), x.getAs[Any]("grade").toString.toLong,timeStamp.toString, indexName, typeName)
         }
         uniqueLogsDS2.coalesce(1).write.option("compression","none").parquet(output_path)
     } // end def analysisLog()
@@ -158,15 +160,8 @@ object StatsUniqueUser {
         val tmp_dateFormat = DateTimeFormatter.ofPattern("YYYYMMdd")
         val start = LocalDate.of(_year, _month, _day)
         val date_list = (0 to n-1).map{
-            i =>
-            // bypass java bug
-            if( DATE.endsWith("0101") ){
-                val year = DATE.substring(0,4).toInt
-                    DATE = (year - 1).toString + "1231"
-            }else{
-                DATE = start.minusDays( i ).format(tmp_dateFormat)
-            }
-            DATE
+          i =>
+            start.minusDays( i ).toString.replaceAll("-", "")
         }
 
         val spark = SparkSession.builder()
