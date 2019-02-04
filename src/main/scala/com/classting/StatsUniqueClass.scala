@@ -47,7 +47,7 @@ object StatsUniqueClass {
             s"$GS_INPUT_BUCKET/logs_" + dummyDir
         }
         val s3Url = dummyUrls ::: List(s"$GS_INPUT_BUCKET/logs_" + todayDir)
-        val rowlogsRDD = spark.read.json(s3Url: _*)
+        val rowlogs_df = spark.read.json(s3Url: _*)
         
         //  2016.2.5~
         //      활성화 클래수 정의 : n 개 이상의 글쓰기 활동(포스트 / 사진올리기 / 학급공지만 포함 // 댓글, 읽기, 빛내기 등 활동은 불포함
@@ -65,8 +65,8 @@ object StatsUniqueClass {
         var countryIdx = -1
         var curIdx = 0
         /*** MODIFIED ***/
-        // rowlogsRDD.columns.map  { col =>
-        rowlogsRDD.columns.foreach  { col =>
+        // rowlogs_df.columns.map  { col =>
+        rowlogs_df.columns.foreach  { col =>
             col match   {
                 case "target_id" => targetIdIdx = curIdx
                 case "target_type" => targetTypeIdx = curIdx
@@ -81,9 +81,25 @@ object StatsUniqueClass {
             }
             curIdx += 1
         }
+        var safe_df = rowlogs_df
+        if( rowlogs_df.columns.contains("grade") == false ){
+            safe_df = safe_df.withColumn("grade", lit(-999L) )
+        }
+        if( rowlogs_df.columns.contains("role") == false ){
+            safe_df = safe_df.withColumn("role", lit("_null") )
+        }
+        if( rowlogs_df.columns.contains("device") == false ){
+            safe_df = safe_df.withColumn("device", lit("_null") )
+        }
+        if( rowlogs_df.columns.contains("country") == false ){
+            safe_df = safe_df.withColumn("country", lit("_null") )
+        }
+        if( rowlogs_df.columns.contains("lang") == false ){
+            safe_df = safe_df.withColumn("lang", lit("_null") )
+        }
         //      println( PREFIX + "targetTypeIdx: " + targetTypeIdx )
         
-        val activitylogsRDD = rowlogsRDD.filter { x =>
+        val activitylogsRDD = safe_df.filter { x =>
             val targetType = ""+x.getAs[String](targetTypeIdx)
             val resType = ""+x.getAs[String](resourceTypeIdx)
             targetType.equals("class") &&

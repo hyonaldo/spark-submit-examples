@@ -54,7 +54,7 @@ object StatsAccumUser {
         
         // val tmpDF = sqlContext.read.json(s"$GS_INPUT_BUCKET/logs_" + todayDir + "/" + todayDir + "-00_0_api_a.gz")
         // val rowlogsRDD = sqlContext.read.schema(tmpDF.schema).json(sc.textFile(s3Url))
-        val rowlogsRDD = spark.read.json(s3Url)
+        val rowlogs_df = spark.read.json(s3Url)
         
         var apiIdx = -1
         var methodIdx = -1
@@ -65,7 +65,7 @@ object StatsAccumUser {
         var countryIdx = -1
         var codeIdx = -1
         var curIdx = 0
-        rowlogsRDD.columns.foreach { col =>
+        rowlogs_df.columns.foreach { col =>
             col match    {
                 case "api" => apiIdx = curIdx
                 case "method" => methodIdx = curIdx
@@ -79,9 +79,23 @@ object StatsAccumUser {
             }
             curIdx += 1
         }
-
- 
-        val signuplogsRDD = rowlogsRDD.filter    { x =>
+        var safe_df = rowlogs_df
+        if( rowlogs_df.columns.contains("grade") == false ){
+            safe_df = safe_df.withColumn("grade", lit(-999L) )
+        }
+        if( rowlogs_df.columns.contains("role") == false ){
+            safe_df = safe_df.withColumn("role", lit("_null") )
+        }
+        if( rowlogs_df.columns.contains("device") == false ){
+            safe_df = safe_df.withColumn("device", lit("_null") )
+        }
+        if( rowlogs_df.columns.contains("country") == false ){
+            safe_df = safe_df.withColumn("country", lit("_null") )
+        }
+        if( rowlogs_df.columns.contains("lang") == false ){
+            safe_df = safe_df.withColumn("lang", lit("_null") )
+        }
+        val signuplogsRDD = safe_df.filter    { x =>
           !x.isNullAt(apiIdx) &&
             ( x.getAs[String](apiIdx) == "https://www.classting.com/api/users" ||
               x.getAs[String](apiIdx) == "https://oauth.classting.com/v1/oauth2/sign_up" ||
@@ -131,7 +145,7 @@ object StatsAccumUser {
           }
         }
 
-        val signoutlogsRDD = spark.read.json(s3Url).filter    { x =>
+        val signoutlogsRDD = safe_df.filter    { x =>
           !x.isNullAt(apiIdx) &&
             x.getAs[String](apiIdx).contains("https://www.classting.com/api/users") &&
             x.getAs[String](methodIdx) == "DELETE" &&

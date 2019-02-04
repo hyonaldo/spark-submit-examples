@@ -54,7 +54,7 @@ object StatsUniqueUser {
             s"$GS_INPUT_BUCKET/logs_" + dummyDir
         }
         val s3Url = dummyUrls ::: List(s"$GS_INPUT_BUCKET/logs_" + todayDir)
-        val rowlogsRDD = spark.read.json(s3Url: _*)
+        val rowlogs_df = spark.read.json(s3Url: _*)
         
         //  2016.2.5~
         //      활성화 클래수 정의 : n 개 이상의 글쓰기 활동(포스트 / 사진올리기 / 학급공지만 포함 // 댓글, 읽기, 빛내기 등 활동은 불포함
@@ -71,8 +71,7 @@ object StatsUniqueUser {
         var codeIdx = -1
         var curIdx = 0
         /*** MODIFIED ***/
-        // rowlogsRDD.columns.map  { col =>
-        rowlogsRDD.columns.foreach  { col =>
+        rowlogs_df.columns.foreach  { col =>
             col match    {
                 case "api" => apiIdx = curIdx
                 case "id" => idIdx = curIdx
@@ -86,9 +85,24 @@ object StatsUniqueUser {
             }
             curIdx += 1
         }
-        
+        var safe_df = rowlogs_df
+        if( rowlogs_df.columns.contains("grade") == false ){
+            safe_df = safe_df.withColumn("grade", lit(-999L) )
+        }
+        if( rowlogs_df.columns.contains("role") == false ){
+            safe_df = safe_df.withColumn("role", lit("_null") )
+        }
+        if( rowlogs_df.columns.contains("device") == false ){
+            safe_df = safe_df.withColumn("device", lit("_null") )
+        }
+        if( rowlogs_df.columns.contains("country") == false ){
+            safe_df = safe_df.withColumn("country", lit("_null") )
+        }
+        if( rowlogs_df.columns.contains("lang") == false ){
+            safe_df = safe_df.withColumn("lang", lit("_null") )
+        }       
         //    api=page_move, code=400, id=""
-        val activitylogsRDD = rowlogsRDD.filter { x =>
+        val activitylogsRDD = safe_df.filter { x =>
                 !x.isNullAt(apiIdx) &&
                 !x.getAs[String](apiIdx).equals("page_move") &&
                 !x.getAs[String](apiIdx).equals("_null") &&

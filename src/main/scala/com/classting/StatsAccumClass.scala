@@ -51,7 +51,7 @@ object StatsAccumClass {
             s3Url = s"$GS_INPUT_BUCKET/logs_" + todayDir + "/*"
         }
 
-        val rowlogsRDD = spark.read.json(s3Url)
+        val rowlogs_df = spark.read.json(s3Url)
 
         var apiIdx = -1
         var methodIdx = -1
@@ -62,7 +62,7 @@ object StatsAccumClass {
         var countryIdx = -1
         var codeIdx = -1
         var curIdx = 0
-        rowlogsRDD.columns.foreach { col =>
+        rowlogs_df.columns.foreach { col =>
             col match    {
                 case "api" => apiIdx = curIdx
                 case "method" => methodIdx = curIdx
@@ -76,107 +76,122 @@ object StatsAccumClass {
             }
             curIdx += 1
         }
-
+        var safe_df = rowlogs_df
+        if( rowlogs_df.columns.contains("grade") == false ){
+            safe_df = safe_df.withColumn("grade", lit(-999L) )
+        }
+        if( rowlogs_df.columns.contains("role") == false ){
+            safe_df = safe_df.withColumn("role", lit("_null") )
+        }
+        if( rowlogs_df.columns.contains("device") == false ){
+            safe_df = safe_df.withColumn("device", lit("_null") )
+        }
+        if( rowlogs_df.columns.contains("country") == false ){
+            safe_df = safe_df.withColumn("country", lit("_null") )
+        }
+        if( rowlogs_df.columns.contains("lang") == false ){
+            safe_df = safe_df.withColumn("lang", lit("_null") )
+        }
  
-		val makelogsRDD = rowlogsRDD.
-		withColumn("grade", when($"grade".isNull,lit(-999L)).otherwise($"grade")).
-		rdd.filter    { x =>
-				!x.isNullAt(apiIdx) &&
-				x.getAs[String](apiIdx) == "https://www.classting.com/api/classes" &&
-				x.getAs[String](methodIdx) == "POST" &&
-				x.getAs[Any](codeIdx) + "" == "200"
-		}
+        val makelogsRDD = safe_df.
+        withColumn("grade", when($"grade".isNull,lit(-999L)).otherwise($"grade")).
+        rdd.filter    { x =>
+                !x.isNullAt(apiIdx) &&
+                x.getAs[String](apiIdx) == "https://www.classting.com/api/classes" &&
+                x.getAs[String](methodIdx) == "POST" &&
+                x.getAs[Any](codeIdx) + "" == "200"
+        }
 
-		var role = "_null"
-		val compactLogsRDD = makelogsRDD.map { x =>
-			if( x.getAs[String](roleIdx) != "" )    {
-				role = x.getAs[String](roleIdx)
-			}
+        var role = "_null"
+        val compactLogsRDD = makelogsRDD.map { x =>
+            if( x.getAs[String](roleIdx) != "" )    {
+                role = x.getAs[String](roleIdx)
+            }
 
-			if( langIdx < 0 )    {
-				if( deviceIdx > 0 )    {
-					val device = x.getAs[String](deviceIdx) + ""
-					// StatsAccum(role: String, device: String, country: String, date: String, lang: String, grade: Int, timeStamp:String, _index:String, _type:String)
-					StatsAccum(role, device.replace(".event", ""), x.getAs[String](countryIdx),
-					todayDir,"_null", x.getAs[Any]("grade").toString.toLong, timeStamp.toString, indexName, typeName)
-				}
-				else if( tagIdx > 0 )    {
-					val tag = x.getAs[String](tagIdx) + ""
-					StatsAccum(role, tag.replace(".event", ""), x.getAs[String](countryIdx),
-					todayDir,"_null", x.getAs[Any]("grade").toString.toLong, timeStamp.toString, indexName, typeName)
-				}
-				else    {
-					StatsAccum(role, "_null", x.getAs[String](countryIdx),
-					todayDir,"_null", x.getAs[Any]("grade").toString.toLong, timeStamp.toString, indexName, typeName)
-				}
-			}
-			else    {
-				if( deviceIdx > 0 )    {
-					val device = x.getAs[String](deviceIdx) + ""
-					StatsAccum(role, device.replace(".event", ""), x.getAs[String](countryIdx),
-					todayDir, x.getAs[String](langIdx), x.getAs[Any]("grade").toString.toLong, timeStamp.toString, indexName, typeName)
-				}
-				else if( tagIdx > 0 )    {
-					val tag = x.getAs[String](tagIdx) + ""
-					StatsAccum(role, tag.replace(".event", ""), x.getAs[String](countryIdx),
-					todayDir, x.getAs[String](langIdx), x.getAs[Any]("grade").toString.toLong, timeStamp.toString, indexName, typeName)
-				}
-				else    {
-					StatsAccum(role, "_null", x.getAs[String](countryIdx),
-					todayDir, x.getAs[String](langIdx), x.getAs[Any]("grade").toString.toLong, timeStamp.toString, indexName, typeName)
-				}
-			}
-		}
+            if( langIdx < 0 )    {
+                if( deviceIdx > 0 )    {
+                    val device = x.getAs[String](deviceIdx) + ""
+                    // StatsAccum(role: String, device: String, country: String, date: String, lang: String, grade: Int, timeStamp:String, _index:String, _type:String)
+                    StatsAccum(role, device.replace(".event", ""), x.getAs[String](countryIdx),
+                    todayDir,"_null", x.getAs[Any]("grade").toString.toLong, timeStamp.toString, indexName, typeName)
+                }
+                else if( tagIdx > 0 )    {
+                    val tag = x.getAs[String](tagIdx) + ""
+                    StatsAccum(role, tag.replace(".event", ""), x.getAs[String](countryIdx),
+                    todayDir,"_null", x.getAs[Any]("grade").toString.toLong, timeStamp.toString, indexName, typeName)
+                }
+                else    {
+                    StatsAccum(role, "_null", x.getAs[String](countryIdx),
+                    todayDir,"_null", x.getAs[Any]("grade").toString.toLong, timeStamp.toString, indexName, typeName)
+                }
+            }
+            else    {
+                if( deviceIdx > 0 )    {
+                    val device = x.getAs[String](deviceIdx) + ""
+                    StatsAccum(role, device.replace(".event", ""), x.getAs[String](countryIdx),
+                    todayDir, x.getAs[String](langIdx), x.getAs[Any]("grade").toString.toLong, timeStamp.toString, indexName, typeName)
+                }
+                else if( tagIdx > 0 )    {
+                    val tag = x.getAs[String](tagIdx) + ""
+                    StatsAccum(role, tag.replace(".event", ""), x.getAs[String](countryIdx),
+                    todayDir, x.getAs[String](langIdx), x.getAs[Any]("grade").toString.toLong, timeStamp.toString, indexName, typeName)
+                }
+                else    {
+                    StatsAccum(role, "_null", x.getAs[String](countryIdx),
+                    todayDir, x.getAs[String](langIdx), x.getAs[Any]("grade").toString.toLong, timeStamp.toString, indexName, typeName)
+                }
+            }
+        }
 
-		val dellogsRDD = rowlogsRDD.
-		withColumn("grade", when($"grade".isNull,lit(-999L)).otherwise($"grade")).
-		rdd.filter    { x =>
-				!x.isNullAt(apiIdx) &&
-				x.getAs[String](apiIdx).contains("https://www.classting.com/api/classes") &&
-				x.getAs[String](methodIdx) == "DELETE" &&
-				x.getAs[Any](codeIdx) + "" == "200" &&
-				x.getAs[String](apiIdx).split("/").length == 6
-		}
+        val dellogsRDD = safe_df.
+        withColumn("grade", when($"grade".isNull,lit(-999L)).otherwise($"grade")).
+        rdd.filter    { x =>
+                !x.isNullAt(apiIdx) &&
+                x.getAs[String](apiIdx).contains("https://www.classting.com/api/classes") &&
+                x.getAs[String](methodIdx) == "DELETE" &&
+                x.getAs[Any](codeIdx) + "" == "200" &&
+                x.getAs[String](apiIdx).split("/").length == 6
+        }
 
-		var role2 = "_null"
-		val compactLogsRDD2 = dellogsRDD.map { x =>
-			if( x.getAs[String](roleIdx) != "" )    {
-				role2 = x.getAs[String](roleIdx)
-			}
+        var role2 = "_null"
+        val compactLogsRDD2 = dellogsRDD.map { x =>
+            if( x.getAs[String](roleIdx) != "" )    {
+                role2 = x.getAs[String](roleIdx)
+            }
 
-			if( langIdx < 0 )    {
-				if( deviceIdx > 0 )    {
-					val device = x.getAs[String](deviceIdx) + ""
-					StatsAccum(role2, device.replace(".event", ""), x.getAs[String](countryIdx),
-					todayDir,"_null", x.getAs[Any]("grade").toString.toLong, timeStamp.toString, indexName, typeName)
-				}
-				else if( tagIdx > 0 )    {
-					val tag = x.getAs[String](tagIdx) + ""
-					StatsAccum(role2, tag.replace(".event", ""), x.getAs[String](countryIdx),
-					todayDir,"_null", x.getAs[Any]("grade").toString.toLong, timeStamp.toString, indexName, typeName)
-				}
-				else    {
-					StatsAccum(role2, "_null", x.getAs[String](countryIdx),
-					todayDir,"_null", x.getAs[Any]("grade").toString.toLong, timeStamp.toString, indexName, typeName)
-				}
-			}
-			else    {
-				if( deviceIdx > 0 )    {
-					val device = x.getAs[String](deviceIdx) + ""
-					StatsAccum(role2, device.replace(".event", ""), x.getAs[String](countryIdx),
-					todayDir, x.getAs[String](langIdx), x.getAs[Any]("grade").toString.toLong, timeStamp.toString, indexName, typeName)
-				}
-				else if( tagIdx > 0 )    {
-					val tag = x.getAs[String](tagIdx) + ""
-					StatsAccum(role2, tag.replace(".event", ""), x.getAs[String](countryIdx),
-					todayDir, x.getAs[String](langIdx), x.getAs[Any]("grade").toString.toLong, timeStamp.toString, indexName, typeName)
-				}
-				else    {
-					StatsAccum(role2, "_null", x.getAs[String](countryIdx),
-					todayDir, x.getAs[String](langIdx), x.getAs[Any]("grade").toString.toLong, timeStamp.toString, indexName, typeName)
-				}
-			}
-		}
+            if( langIdx < 0 )    {
+                if( deviceIdx > 0 )    {
+                    val device = x.getAs[String](deviceIdx) + ""
+                    StatsAccum(role2, device.replace(".event", ""), x.getAs[String](countryIdx),
+                    todayDir,"_null", x.getAs[Any]("grade").toString.toLong, timeStamp.toString, indexName, typeName)
+                }
+                else if( tagIdx > 0 )    {
+                    val tag = x.getAs[String](tagIdx) + ""
+                    StatsAccum(role2, tag.replace(".event", ""), x.getAs[String](countryIdx),
+                    todayDir,"_null", x.getAs[Any]("grade").toString.toLong, timeStamp.toString, indexName, typeName)
+                }
+                else    {
+                    StatsAccum(role2, "_null", x.getAs[String](countryIdx),
+                    todayDir,"_null", x.getAs[Any]("grade").toString.toLong, timeStamp.toString, indexName, typeName)
+                }
+            }
+            else    {
+                if( deviceIdx > 0 )    {
+                    val device = x.getAs[String](deviceIdx) + ""
+                    StatsAccum(role2, device.replace(".event", ""), x.getAs[String](countryIdx),
+                    todayDir, x.getAs[String](langIdx), x.getAs[Any]("grade").toString.toLong, timeStamp.toString, indexName, typeName)
+                }
+                else if( tagIdx > 0 )    {
+                    val tag = x.getAs[String](tagIdx) + ""
+                    StatsAccum(role2, tag.replace(".event", ""), x.getAs[String](countryIdx),
+                    todayDir, x.getAs[String](langIdx), x.getAs[Any]("grade").toString.toLong, timeStamp.toString, indexName, typeName)
+                }
+                else    {
+                    StatsAccum(role2, "_null", x.getAs[String](countryIdx),
+                    todayDir, x.getAs[String](langIdx), x.getAs[Any]("grade").toString.toLong, timeStamp.toString, indexName, typeName)
+                }
+            }
+        }
        
         val ds1 = compactLogsRDD.toDS
         val ds2 = compactLogsRDD2.toDS
